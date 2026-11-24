@@ -26,6 +26,43 @@ addEventListener('keydown', e => {
 });
 matchMedia('(min-width: 761px)').addEventListener('change', e => { if (e.matches) setMenu(false); });
 
+/* Celular: menos texto de uma vez.
+   "Mais sobre mim" fecha e os serviços viram acordeão (só o primeiro aberto).
+   No desktop tudo fica aberto. Sem JavaScript, tudo aparece aberto. */
+const mobile = matchMedia('(max-width: 760px)');
+const aboutMore = document.querySelector('.about-more');
+const services = [...document.querySelectorAll('.service')];
+let refreshScroll = () => {};
+
+function setService(item, open) {
+  const btn = item.querySelector('.service-toggle');
+  const body = item.querySelector('.service-body');
+  item.classList.toggle('collapsed', !open);
+  btn.setAttribute('aria-expanded', open);
+  body.inert = !open;
+}
+
+function applyLayout() {
+  const m = mobile.matches;
+  if (aboutMore) aboutMore.open = !m;
+  services.forEach((item, i) => {
+    item.querySelector('.service-toggle').disabled = !m;
+    setService(item, !m || i === 0);
+  });
+  refreshScroll();
+}
+
+services.forEach(item => {
+  item.querySelector('.service-toggle').addEventListener('click', () => {
+    if (!mobile.matches) return;
+    setService(item, item.classList.contains('collapsed'));
+    setTimeout(refreshScroll, 500);
+  });
+});
+aboutMore?.addEventListener('toggle', () => setTimeout(refreshScroll, 50));
+mobile.addEventListener('change', applyLayout);
+applyLayout();
+
 /* Demonstração da busca no Google: digita a frase e revela os resultados */
 function initSearchDemo() {
   if (still || !('IntersectionObserver' in window)) return;
@@ -83,6 +120,7 @@ async function initMotion() {
     import('lenis'), import('gsap'), import('gsap/ScrollTrigger')
   ]);
   gsap.registerPlugin(ScrollTrigger);
+  refreshScroll = () => ScrollTrigger.refresh();
 
   if (still) return { gsap, ScrollTrigger };
 
@@ -100,12 +138,20 @@ async function initMotion() {
 }
 
 function revealOnScroll(gsap, selector) {
-  if (still) return;
-  gsap.utils.toArray(selector).forEach(el => {
-    gsap.from(el, {
-      y: 32, opacity: 0, duration: 1, ease: 'expo.out',
-      scrollTrigger: { trigger: el, start: 'top 90%', once: true }
+  // IntersectionObserver acompanha o layout real (acordeão, carrossel, filtro),
+  // então nenhum item fica preso invisível. O que já está na tela não é escondido.
+  if (still || !('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      io.unobserve(entry.target);
+      gsap.to(entry.target, { opacity: 1, y: 0, duration: 1, ease: 'expo.out', clearProps: 'opacity,transform' });
     });
+  }, { rootMargin: '0px 0px -8% 0px' });
+  gsap.utils.toArray(selector).forEach(el => {
+    if (el.getBoundingClientRect().top < innerHeight) return;
+    gsap.set(el, { opacity: 0, y: 32 });
+    io.observe(el);
   });
 }
 
@@ -122,7 +168,8 @@ async function initGallery(motion) {
     }
   });
   if (motion) {
-    revealOnScroll(motion.gsap, '.filters, .project, .next');
+    // no celular os projetos são um carrossel: revela o carrossel inteiro, não cada card
+    revealOnScroll(motion.gsap, mobile.matches ? '.filters, .work' : '.filters, .project, .next');
     motion.ScrollTrigger.refresh();
   }
 }

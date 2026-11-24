@@ -61,6 +61,7 @@ function NextTile() {
 
 function Gallery({ items, onFilter, onReady }) {
   const [filter, setFilter] = useState('all');
+  const [active, setActive] = useState(0);
   const grid = useRef(null);
   const first = useRef(true);
   const visible = filter === 'all' ? items : items.filter(p => p.cat === filter);
@@ -69,8 +70,21 @@ function Gallery({ items, onFilter, onReady }) {
   useEffect(() => { onReady?.(); }, []);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
+    grid.current.scrollTo({ left: 0 });
+    setActive(0);
     onFilter?.(grid.current);
   }, [filter]);
+
+  // Carrossel no celular: descobre qual card está à vista para acender o ponto certo
+  const onScroll = () => {
+    const el = grid.current;
+    const card = el.firstElementChild;
+    if (!card) return;
+    const step = card.getBoundingClientRect().width + parseFloat(getComputedStyle(el).columnGap || 0);
+    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 4;
+    setActive(atEnd ? el.children.length - 1 : Math.min(el.children.length - 1, Math.round(el.scrollLeft / step)));
+  };
+  const slides = visible.length + (visible.length % 2 === 1 ? 1 : 0);
 
   return html`
     <div class="filters" role="group" aria-label="Filtrar projetos">
@@ -80,9 +94,12 @@ function Gallery({ items, onFilter, onReady }) {
         </button>`)}
     </div>
     <p class="sr-only" role="status">${visible.length} projetos exibidos</p>
-    <div class="work" ref=${grid}>
+    <div class="work" ref=${grid} onScroll=${onScroll}>
       ${visible.map(p => html`<${Project} key=${p.id} p=${p} />`)}
       ${visible.length % 2 === 1 && html`<${NextTile} />`}
+    </div>
+    <div class="dots" aria-hidden="true">
+      ${Array.from({ length: slides }, (_, i) => html`<span key=${i} class=${i === active ? 'on' : ''}></span>`)}
     </div>`;
 }
 
