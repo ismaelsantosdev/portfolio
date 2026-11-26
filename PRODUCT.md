@@ -38,7 +38,7 @@ A young developer who combines code, design and AI to give small businesses a re
 
 ## Evidence on Hand
 
-- `img/`: screenshots of Nobre Barbearia, Trattoria Bella, Login Rota Livre; EJC buttons; São Tarcísio shirt; three caricatures.
+- `img/`: screenshots of Nobre Barbearia, Trattoria Bella, Login Rota Livre; São Tarcísio shirt; three caricatures.
 - No metrics, testimonials or client results exist. Never invent them.
 
 ## Product Principles
